@@ -19,6 +19,10 @@ class Config:
                 value = Config(value)
             self.__dict__[key] = value
 
+    def get(self, key: str, default: Any = None) -> Any:
+        """Dict-like access with a default for optional keys."""
+        return self.__dict__.get(key, default)
+
     def __repr__(self) -> str:  # pragma: no cover - debugging helper
         return repr(self.__dict__)
 

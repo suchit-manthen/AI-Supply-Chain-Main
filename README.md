@@ -18,11 +18,16 @@ AI-SUPPLY-CHAIN/
 │   │   └── generate_data.py # synthetic dataset generator
 │   ├── features/
 │   │   └── make_dataset.py  # feature engineering + chronological split
-│   ├── models/              # forecasting models (Step 3)
-│   └── evaluation/          # MAE/RMSE/MAPE metrics (Step 3)
+│   ├── models/
+│   │   ├── base.py          # common fit/predict interface
+│   │   └── sarima.py        # ARIMA/SARIMA (per-SKU, val-based order selection)
+│   └── evaluation/
+│       ├── metrics.py       # MAE, RMSE, MAPE
+│       └── evaluate.py      # prediction vs actual scoring
 ├── scripts/
 │   ├── generate_dataset.py  # CLI entry point for data generation
-│   └── make_dataset.py      # CLI entry point for feature engineering
+│   ├── make_dataset.py      # CLI entry point for feature engineering
+│   └── train_model.py       # CLI entry point for training/evaluation
 ├── notebooks/               # exploratory analysis
 └── requirements.txt
 ```
@@ -31,8 +36,9 @@ AI-SUPPLY-CHAIN/
 
 1. **Step 1 (done)** — Generate synthetic supermarket sales data.
 2. **Step 2 (done)** — Feature engineering + chronological train/val/test split.
-3. **Step 3** — Fit & compare models: ARIMA/SARIMA, Prophet, Random Forest,
-   XGBoost/LightGBM, LSTM/GRU. Evaluate with MAE, RMSE, MAPE and pick the best.
+3. **Step 3 (in progress)** — Fit & compare models:
+   - SARIMA (done) — MAE/RMSE/MAPE on test, val-based order selection
+   - Prophet, Random Forest, XGBoost/LightGBM, LSTM/GRU (pending)
 4. **Step 4** — Inventory optimization: Safety Stock, Reorder Point, EOQ.
 
 ## Quick start

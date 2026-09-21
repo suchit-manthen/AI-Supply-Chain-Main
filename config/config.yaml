@@ -42,3 +42,22 @@ features:
     train: "data/processed/train.csv"
     val: "data/processed/val.csv"
     test: "data/processed/test.csv"
+
+# Forecasting models (Step 3)
+models:
+  output_dir: "data/processed"
+
+  sarima:
+    # Default fixed order (used when `candidates` is empty)
+    order: [1, 1, 1]           # (p, d, q)
+    seasonal_order: [1, 1, 1, 7]  # (P, D, Q, s) with s=7 (weekly)
+
+    # Optional: candidate orders searched on the validation set (MAPE).
+    # Leave empty ([]) to disable search and use the fixed order above.
+    candidates:
+      - order: [1, 1, 1]
+        seasonal_order: [1, 1, 1, 7]
+      - order: [1, 0, 1]
+        seasonal_order: [1, 0, 1, 7]
+      - order: [2, 1, 2]
+        seasonal_order: [1, 1, 1, 7]
