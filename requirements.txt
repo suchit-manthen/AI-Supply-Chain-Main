@@ -1,0 +1,17 @@
+# Step 1 (data generation) — lightweight
+numpy>=1.26
+pandas>=2.0
+PyYAML>=6.0
+
+# Step 2+ (feature engineering) — will be added later
+# scikit-learn>=1.4
+
+# Step 2+ (forecasting models) — will be added later
+# statsmodels>=0.14      # ARIMA/SARIMA
+# prophet>=1.1           # Prophet
+# xgboost>=2.0           # XGBoost
+# lightgbm>=4.0          # LightGBM
+# torch>=2.2             # LSTM/GRU (GPU optional)
+
+# Step 3 (evaluation / inventory) — will be added later
+# (none beyond numpy/pandas)

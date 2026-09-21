@@ -1,0 +1,27 @@
+# Synthetic supermarket dataset configuration
+data:
+  start_date: "2022-01-01"
+  end_date: "2024-12-31"          # ~3 years of daily sales
+  random_seed: 42
+  output:
+    raw: "data/raw/sales.csv"
+    products: "data/raw/products.csv"
+    processed: "data/processed/sales_features.csv"
+
+  # Number of products to generate (one product = one SKU per store)
+  n_products: 24
+
+  # Demand generation parameters
+  demand:
+    base_level_low: 10     # avg daily units for low-volume products
+    base_level_high: 400   # avg daily units for high-volume products
+    yearly_amp_frac: 0.15  # yearly seasonality amplitude as fraction of base
+    weekly_weekend_boost: 0.25   # weekend uplift (grocery typical)
+    promo_lift_low: 0.15   # multiplicative lift from a promotion
+    promo_lift_high: 0.60
+    holiday_lift: 0.35     # uplift around major holidays
+    price_elasticity: -1.2 # typical grocery price elasticity (log-log)
+    noise_std: 0.15        # log-normal demand noise
+    discount_fraction: 0.08 # share of days a product is on promotion
+
+  # Optional: hold-out is handled at model stage, not during generation
