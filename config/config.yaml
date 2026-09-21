@@ -25,3 +25,20 @@ data:
     discount_fraction: 0.08 # share of days a product is on promotion
 
   # Optional: hold-out is handled at model stage, not during generation
+
+# Feature engineering & dataset splitting
+features:
+  target: "sales"
+  lags: [1, 7, 14, 28]         # lagged target values (days)
+  rolling_windows: [7, 14, 28]  # rolling mean/std window sizes (days)
+
+  split:
+    train_frac: 0.70            # chronological split by date
+    val_frac: 0.15
+    test_frac: 0.15
+
+  output:
+    features: "data/processed/sales_features.csv"
+    train: "data/processed/train.csv"
+    val: "data/processed/val.csv"
+    test: "data/processed/test.csv"

@@ -16,11 +16,13 @@ AI-SUPPLY-CHAIN/
 │   ├── config.py            # YAML config loader
 │   ├── data/
 │   │   └── generate_data.py # synthetic dataset generator
-│   ├── features/            # feature engineering (Step 2)
+│   ├── features/
+│   │   └── make_dataset.py  # feature engineering + chronological split
 │   ├── models/              # forecasting models (Step 3)
 │   └── evaluation/          # MAE/RMSE/MAPE metrics (Step 3)
 ├── scripts/
-│   └── generate_dataset.py  # CLI entry point for data generation
+│   ├── generate_dataset.py  # CLI entry point for data generation
+│   └── make_dataset.py      # CLI entry point for feature engineering
 ├── notebooks/               # exploratory analysis
 └── requirements.txt
 ```
@@ -28,7 +30,7 @@ AI-SUPPLY-CHAIN/
 ## Pipeline (planned)
 
 1. **Step 1 (done)** — Generate synthetic supermarket sales data.
-2. **Step 2** — Feature engineering + train/test split.
+2. **Step 2 (done)** — Feature engineering + chronological train/val/test split.
 3. **Step 3** — Fit & compare models: ARIMA/SARIMA, Prophet, Random Forest,
    XGBoost/LightGBM, LSTM/GRU. Evaluate with MAE, RMSE, MAPE and pick the best.
 4. **Step 4** — Inventory optimization: Safety Stock, Reorder Point, EOQ.
@@ -40,6 +42,7 @@ python -m venv .venv
 .venv\Scripts\activate        # Windows
 pip install -r requirements.txt
 python scripts/generate_dataset.py
+python scripts/make_dataset.py
 ```
 
 The generator writes:
