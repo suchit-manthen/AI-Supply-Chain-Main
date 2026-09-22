@@ -18,9 +18,17 @@ import pandas as pd  # noqa: E402
 from src.config import load_config  # noqa: E402
 from src.evaluation.evaluate import evaluate_predictions, evaluate_per_sku  # noqa: E402
 from src.models.sarima import SARIMAForecaster  # noqa: E402
+from src.models.prophet_model import ProphetForecaster  # noqa: E402
+from src.models.random_forest_model import RandomForestForecaster  # noqa: E402
+from src.models.xgboost_model import XGBoostForecaster  # noqa: E402
+from src.models.lstm_model import LSTMGRUForecaster  # noqa: E402
 
 MODEL_REGISTRY = {
     "sarima": SARIMAForecaster,
+    "prophet": ProphetForecaster,
+    "random_forest": RandomForestForecaster,
+    "xgboost": XGBoostForecaster,
+    "lstm_gru": LSTMGRUForecaster,
 }
 
 
@@ -46,7 +54,10 @@ def main() -> None:
 
     test_dates = pd.DatetimeIndex(pd.to_datetime(test["date"].unique()))
     t0 = time.perf_counter()
-    preds = model.predict(test_dates)
+    if getattr(model, "needs_features", False):
+        preds = model.predict(test)
+    else:
+        preds = model.predict(test_dates)
     pred_time = time.perf_counter() - t0
 
     metrics = evaluate_predictions(preds, test)
@@ -69,6 +80,10 @@ def main() -> None:
         orders = pd.Series({pid: str(o) for pid, o in model.best_order_.items()})
         print(f"\nSelected orders (validation-based):")
         print(orders.value_counts().to_string())
+    elif hasattr(model, "best_params_"):
+        params = pd.Series({pid: str(p) for pid, p in model.best_params_.items()})
+        print(f"\nSelected hyperparams (validation-based):")
+        print(params.value_counts().to_string())
 
     # Persist predictions for reproducibility.
     pred_path = out_dir / f"predictions_{args.model}.csv"

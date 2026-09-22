@@ -14,6 +14,13 @@ data/processed/
 # Notebooks
 .ipynb_checkpoints/
 
+# Frontend (Node)
+node_modules/
+frontend/dist/
+
+# SQLite database (regenerate with backend/seed.py)
+backend/supermarket.db
+
 # IDE / OS
 .idea/
 .vscode/

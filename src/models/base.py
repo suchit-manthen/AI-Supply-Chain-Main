@@ -23,6 +23,10 @@ class BaseForecaster(ABC):
 
     name: str = "base"
 
+    # Feature-based models (Random Forest, XGBoost, LSTM/GRU) consume the
+    # engineered feature table; time-series models (SARIMA/Prophet) do not.
+    needs_features: bool = False
+
     def __init__(self, config=None):
         self.config = config
 

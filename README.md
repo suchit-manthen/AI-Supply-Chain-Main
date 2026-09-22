@@ -20,7 +20,11 @@ AI-SUPPLY-CHAIN/
 │   │   └── make_dataset.py  # feature engineering + chronological split
 │   ├── models/
 │   │   ├── base.py          # common fit/predict interface
-│   │   └── sarima.py        # ARIMA/SARIMA (per-SKU, val-based order selection)
+│   │   ├── sarima.py        # ARIMA/SARIMA (per-SKU, val-based order selection)
+│   │   ├── prophet_model.py # Prophet (per-SKU, val-based hyperparameter selection)
+│   │   ├── random_forest_model.py  # Random Forest (per-SKU, feature-based)
+│   │   ├── xgboost_model.py # XGBoost (per-SKU, feature-based)
+│   │   └── lstm_model.py    # LSTM/GRU (per-SKU, sequence feature-based)
 │   └── evaluation/
 │       ├── metrics.py       # MAE, RMSE, MAPE
 │       └── evaluate.py      # prediction vs actual scoring
@@ -38,7 +42,10 @@ AI-SUPPLY-CHAIN/
 2. **Step 2 (done)** — Feature engineering + chronological train/val/test split.
 3. **Step 3 (in progress)** — Fit & compare models:
    - SARIMA (done) — MAE/RMSE/MAPE on test, val-based order selection
-   - Prophet, Random Forest, XGBoost/LightGBM, LSTM/GRU (pending)
+   - Prophet (done) — MAE/RMSE/MAPE on test, val-based hyperparameter selection
+   - Random Forest (done) — feature-based, val-based hyperparameter selection
+   - XGBoost (done) — feature-based, val-based hyperparameter selection
+   - LSTM/GRU (done) — sequence feature-based, val-based architecture selection
 4. **Step 4** — Inventory optimization: Safety Stock, Reorder Point, EOQ.
 
 ## Quick start

@@ -61,3 +61,69 @@ models:
         seasonal_order: [1, 0, 1, 7]
       - order: [2, 1, 2]
         seasonal_order: [1, 1, 1, 7]
+
+  prophet:
+    yearly_seasonality: true
+    weekly_seasonality: true
+    daily_seasonality: false
+
+    # Optional: candidate hyperparameter sets searched on validation (MAPE).
+    # Leave empty ([]) to use Prophet defaults.
+    candidates:
+      - changepoint_prior_scale: 0.05
+        seasonality_prior_scale: 10.0
+      - changepoint_prior_scale: 0.5
+        seasonality_prior_scale: 10.0
+      - changepoint_prior_scale: 0.05
+        seasonality_prior_scale: 1.0
+
+  random_forest:
+    random_state: 42
+
+    # Candidate hyperparameter sets searched on the validation set (MAPE).
+    candidates:
+      - n_estimators: 200
+        max_depth: 10
+        min_samples_leaf: 5
+      - n_estimators: 300
+        max_depth: 15
+        min_samples_leaf: 5
+      - n_estimators: 200
+        max_depth: 20
+        min_samples_leaf: 2
+
+  xgboost:
+    random_state: 42
+
+    # Candidate hyperparameter sets searched on the validation set (MAPE).
+    candidates:
+      - n_estimators: 200
+        max_depth: 5
+        learning_rate: 0.05
+      - n_estimators: 300
+        max_depth: 7
+        learning_rate: 0.05
+      - n_estimators: 200
+        max_depth: 5
+        learning_rate: 0.10
+
+  lstm_gru:
+    lookback: 28           # input sequence length (days)
+    hidden_size: 32
+    num_layers: 1
+    rnn_type: "gru"        # "gru" or "lstm"
+    dropout: 0.0
+    batch_size: 32
+    epochs: 40
+    learning_rate: 0.001
+    patience: 6            # early-stopping patience (epochs)
+    random_state: 42
+
+    # Candidate architectures searched on the validation set (MAPE).
+    candidates:
+      - rnn_type: "gru"
+        hidden_size: 32
+      - rnn_type: "lstm"
+        hidden_size: 32
+      - rnn_type: "gru"
+        hidden_size: 64
