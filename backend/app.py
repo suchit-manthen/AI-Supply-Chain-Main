@@ -19,6 +19,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 import forecast_service as fs
+import orchestrator
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024  # 64 MB
@@ -100,6 +101,41 @@ def demo():
     dataset_id = uuid.uuid4().hex[:12]
     DATASETS[dataset_id] = df
     return jsonify({"dataset_id": dataset_id, "report": report, "products": fs.list_products(df)})
+
+
+@app.post("/api/recommend")
+def recommend():
+    """Run the manager-facing pipeline: pattern analysis -> forecast -> actions."""
+    body = request.get_json(silent=True) or {}
+    dataset_id = body.get("dataset_id")
+    if not dataset_id or dataset_id not in DATASETS:
+        return jsonify({"error": "Unknown dataset_id. Upload a CSV first."}), 400
+
+    horizon = int(body.get("horizon", 30))
+    service_level = float(body.get("service_level", 0.95))
+    lead_time = int(body.get("lead_time", 3))
+    ordering_cost = float(body.get("ordering_cost", 50.0))
+    holding_rate = float(body.get("holding_rate", 0.20))
+    products = body.get("products")
+    category = body.get("category")
+
+    try:
+        results = orchestrator.run_recommend(
+            DATASETS[dataset_id],
+            horizon=horizon,
+            service_level=service_level,
+            lead_time_default=lead_time,
+            ordering_cost=ordering_cost,
+            holding_rate=holding_rate,
+            product_ids=products,
+            category=category,
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:  # pragma: no cover - defensive
+        return jsonify({"error": f"Recommendation failed: {exc}"}), 500
+
+    return jsonify(results)
 
 
 @app.post("/api/run")

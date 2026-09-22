@@ -1,31 +1,79 @@
 import { useEffect, useState } from 'react'
 import DatasetOverview from './components/DatasetOverview.jsx'
+import Overview from './components/Overview.jsx'
 import DemandForecast from './components/DemandForecast.jsx'
-import ModelComparison from './components/ModelComparison.jsx'
-import InventoryOptimization from './components/InventoryOptimization.jsx'
+import InventoryActions from './components/InventoryActions.jsx'
 import SKUAnalysis from './components/SKUAnalysis.jsx'
-import { getMeta } from './api.js'
+import AdvancedAnalytics from './components/AdvancedAnalytics.jsx'
+import { getMeta, recommend } from './api.js'
 
 const SECTIONS = [
-  { id: 'dataset', label: 'Dataset Overview', icon: '📊' },
+  { id: 'overview', label: 'Overview', icon: '🏠' },
   { id: 'forecast', label: 'Demand Forecast', icon: '📈' },
-  { id: 'compare', label: 'Model Comparison', icon: '⚖️' },
-  { id: 'inventory', label: 'Inventory Optimization', icon: '📦' },
-  { id: 'sku', label: 'Product / SKU Analysis', icon: '🏷️' },
+  { id: 'inventory', label: 'Inventory Actions', icon: '📦' },
+  { id: 'sku', label: 'Product Analysis', icon: '🏷️' },
+  { id: 'advanced', label: 'Advanced Analytics', icon: '⚙️' },
 ]
+
+const DEFAULT_PARAMS = { horizon: 30, service_level: 0.95, lead_time: 3, ordering_cost: 50, holding_rate: 0.2 }
 
 export default function App() {
   const [meta, setMeta] = useState(null)
-  const [section, setSection] = useState('dataset')
-  const [dataset, setDataset] = useState(null)   // { dataset_id, report, products }
-  const [results, setResults] = useState(null)   // full run results
-  const [runRequest, setRunRequest] = useState(null) // the last run config for context
+  const [section, setSection] = useState('overview')
+  const [dataset, setDataset] = useState(null)
+  const [recommendation, setRecommendation] = useState(null)
+  const [comparison, setComparison] = useState(null)
+  const [params, setParams] = useState(DEFAULT_PARAMS)
+  const [recBusy, setRecBusy] = useState(false)
+  const [recError, setRecError] = useState(null)
 
   useEffect(() => {
     getMeta().then(setMeta).catch(() => setMeta({ models: [], model_labels: {}, model_descriptions: {}, defaults: {} }))
   }, [])
 
-  const datasetReady = !!dataset
+  async function runRecommend(overrides = {}) {
+    const p = { ...params, ...overrides }
+    setParams(p)
+    setRecBusy(true)
+    setRecError(null)
+    try {
+      const res = await recommend({ dataset_id: dataset.dataset_id, ...p })
+      setRecommendation(res)
+      setSection('overview')
+    } catch (e) {
+      setRecError(e.message)
+    } finally {
+      setRecBusy(false)
+    }
+  }
+
+  if (!dataset) {
+    return (
+      <div className="app">
+        <div className="main">
+          <main className="content">
+            <DatasetOverview
+              onLoaded={(d) => { setDataset(d); setRecommendation(null); setComparison(null) }}
+            />
+          </main>
+        </div>
+      </div>
+    )
+  }
+
+  const shared = {
+    dataset,
+    meta,
+    recommendation,
+    setRecommendation,
+    comparison,
+    setComparison,
+    params,
+    setParams,
+    recBusy,
+    recError,
+    runRecommend,
+  }
 
   return (
     <div className="app">
@@ -34,59 +82,36 @@ export default function App() {
           <span className="brand-mark">🛒</span>
           <div>
             <div className="side-title">AI Supply Chain</div>
-            <div className="side-sub">Demand Forecasting</div>
+            <div className="side-sub">Demand &amp; Inventory</div>
           </div>
         </div>
         <nav className="side-nav">
-          {SECTIONS.map((s) => {
-            const disabled = s.id !== 'dataset' && !datasetReady
-            return (
-              <button
-                key={s.id}
-                className={`side-item ${section === s.id ? 'active' : ''} ${disabled ? 'disabled' : ''}`}
-                onClick={() => !disabled && setSection(s.id)}
-              >
-                <span className="side-icon">{s.icon}</span>
-                <span>{s.label}</span>
-                {s.id !== 'dataset' && !datasetReady && <span className="lock">🔒</span>}
-              </button>
-            )
-          })}
+          {SECTIONS.map((s) => (
+            <button
+              key={s.id}
+              className={`side-item ${section === s.id ? 'active' : ''}`}
+              onClick={() => setSection(s.id)}
+            >
+              <span className="side-icon">{s.icon}</span>
+              <span>{s.label}</span>
+              {s.id === 'advanced' && <span className="side-tag">technical</span>}
+            </button>
+          ))}
         </nav>
         <div className="side-foot">
-          {datasetReady ? (
-            <div className="ds-chip" title={dataset.report ? `${dataset.report.n_rows} rows` : ''}>
-              <span className="dot" /> {dataset.report?.n_products ?? '—'} SKUs loaded
-            </div>
-          ) : (
-            <div className="ds-chip muted">No dataset loaded</div>
-          )}
+          <div className="ds-chip" title={`${dataset.report?.n_rows ?? ''} rows`}>
+            <span className="dot" /> {dataset.report?.n_products ?? '—'} SKUs loaded
+          </div>
         </div>
       </aside>
 
       <div className="main">
         <main className="content">
-          {section === 'dataset' && (
-            <DatasetOverview dataset={dataset} onLoaded={setDataset} onProceed={() => setSection('forecast')} />
-          )}
-          {section === 'forecast' && (
-            <DemandForecast
-              dataset={dataset}
-              meta={meta}
-              results={results}
-              onResults={setResults}
-              onRequest={setRunRequest}
-            />
-          )}
-          {section === 'compare' && (
-            <ModelComparison results={results} request={runRequest} onGoForecast={() => setSection('forecast')} />
-          )}
-          {section === 'inventory' && (
-            <InventoryOptimization results={results} onGoForecast={() => setSection('forecast')} />
-          )}
-          {section === 'sku' && (
-            <SKUAnalysis results={results} onGoForecast={() => setSection('forecast')} />
-          )}
+          {section === 'overview' && <Overview {...shared} />}
+          {section === 'forecast' && <DemandForecast {...shared} />}
+          {section === 'inventory' && <InventoryActions {...shared} />}
+          {section === 'sku' && <SKUAnalysis {...shared} />}
+          {section === 'advanced' && <AdvancedAnalytics {...shared} />}
         </main>
       </div>
     </div>

@@ -2,118 +2,133 @@ import { useMemo, useState } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from 'recharts'
-import { fmt } from '../api.js'
+import { fmt, RISK_LABELS, STATUS_META, TERM_TIPS } from '../api.js'
 
-export default function SKUAnalysis({ results, onGoForecast }) {
-  const products = results?.products || []
+export default function SKUAnalysis({ recommendation, runRecommend, recBusy }) {
+  const products = recommendation?.products || []
   const [pid, setPid] = useState('')
-  const [model, setModel] = useState('')
-
   const active = pid || products[0]?.product_id || ''
 
-  const skuRows = useMemo(() => {
-    const rows = {}
-    for (const m of results?.models || []) {
-      for (const row of results?.sku_metrics?.[m] || []) {
-        if (row.product_id !== active) continue
-        rows[m] = row
-      }
-    }
-    return rows
-  }, [results, active])
-
-  const sortedModels = useMemo(() => {
-    return [...(results?.models || [])].sort((a, b) => (skuRows[b]?.mape ?? 1e9) - (skuRows[a]?.mape ?? 1e9))
-  }, [results, skuRows])
-
-  const chosenModel = model || sortedModels[0] || ''
-  const series = results?.actual_vs_predicted?.[chosenModel]?.[active] || []
-  const product = products.find((p) => p.product_id === active)
-
-  if (!results) {
+  if (!recommendation) {
     return (
       <div className="empty-state">
         <div className="empty-icon">🏷️</div>
         <h2>No results yet</h2>
-        <p className="muted">Run a forecast to explore per-product accuracy.</p>
-        <button className="btn primary" onClick={onGoForecast}>Go to Demand Forecast</button>
+        <p className="muted">Generate recommendations from the Overview first.</p>
+        <button className="btn primary" onClick={() => runRecommend()} disabled={recBusy}>Generate Recommendations</button>
       </div>
     )
   }
+
+  const rec = recommendation.recommendation?.[active] || {}
+  const inv = (recommendation.inventory || []).find((i) => i.product_id === active)
+  const hist = recommendation.history?.[active] || []
+  const fc = recommendation.forecast?.[active] || []
+
+  const data = useMemo(() => {
+    const byDate = {}
+    hist.forEach((h) => { byDate[h.date] = byDate[h.date] || {}; byDate[h.date].actual = h.sales })
+    fc.forEach((f) => { byDate[f.date] = byDate[f.date] || {}; byDate[f.date].forecast = f.predicted })
+    return Object.keys(byDate).sort().map((d) => ({ date: d, ...byDate[d] }))
+  }, [hist, fc])
+
+  const signals = useMemo(() => {
+    const p = recommendation.patterns?.[active] || {}
+    return [
+      { label: 'Weekly rhythm', value: p.weekly, fmt: (v) => v >= 0.15 ? 'strong' : 'weak' },
+      { label: 'Seasonal pattern', value: p.yearly, fmt: (v) => v >= 0.12 ? 'strong' : 'weak' },
+      { label: 'Promotion sensitivity', value: p.promo, fmt: (v) => v >= 0.2 ? 'high' : 'low' },
+      { label: 'Holiday spikes', value: p.holiday, fmt: (v) => v >= 0.15 ? 'strong' : 'weak' },
+      { label: 'Day-to-day variation', value: Math.min(p.volatility / 0.8, 1), fmt: (v) => v >= 0.45 ? 'high' : 'low' },
+      { label: 'Irregular (zero) days', value: Math.min(p.intermittency / 0.3, 1), fmt: (v) => v >= 0.15 ? 'frequent' : 'rare' },
+    ]
+  }, [recommendation, active])
 
   return (
     <div className="stack">
       <div className="page-head">
         <div>
-          <h2>Product / SKU Analysis</h2>
-          <p className="muted">Drill into a single product's demand and model accuracy.</p>
+          <h2>Product Analysis</h2>
+          <p className="muted">A closer look at one product's demand and plan.</p>
         </div>
       </div>
 
       <div className="card">
-        <div className="toolbar" style={{ marginBottom: 0 }}>
-          <div className="field">
+        <div className="toolbar">
+          <div className="field" style={{ flex: 1, minWidth: 280 }}>
             <label>Product</label>
             <select value={active} onChange={(e) => setPid(e.target.value)}>
               {products.map((p) => (
-                <option key={p.product_id} value={p.product_id}>{p.product_id} — {p.product_name}</option>
+                <option key={p.product_id} value={p.product_id}>{p.product_name} — {p.product_id}</option>
               ))}
             </select>
           </div>
-          {product && (
+          {inv && (
             <div className="field">
-              <label>Info</label>
-              <div style={{ paddingTop: 8 }}>
-                <span className="badge">{product.category}</span>{' '}
-                <span className="muted" style={{ marginLeft: 6 }}>avg {fmt(product.avg_sales, 1)} units/day</span>
-              </div>
+              <label>Category</label>
+              <div style={{ paddingTop: 8 }}><span className="badge">{inv.category}</span></div>
             </div>
           )}
         </div>
       </div>
 
-      <div className="card">
-        <h3>Model Accuracy for {active}</h3>
-        <table>
-          <thead><tr><th>Model</th><th>MAE</th><th>RMSE</th><th>MAPE</th></tr></thead>
-          <tbody>
-            {sortedModels.map((m) => {
-              const row = skuRows[m]
-              return (
-                <tr key={m} style={m === sortedModels[0] ? { background: '#ecfdf5' } : undefined}>
-                  <td>
-                    {results.model_labels?.[m] || m}
-                    {m === sortedModels[0] && <span className="badge green" style={{ marginLeft: 8 }}>Best</span>}
-                  </td>
-                  <td>{row ? fmt(row.mae, 2) : '—'}</td>
-                  <td>{row ? fmt(row.rmse, 2) : '—'}</td>
-                  <td><b>{row ? `${fmt(row.mape, 2)}%` : '—'}</b></td>
+      <div className="row">
+        <div className="card">
+          <h3>Demand profile</h3>
+          <div className="chips" style={{ marginBottom: 14 }}>
+            {(rec.tag_labels || []).map((t) => <span key={t} className="badge">{t}</span>)}
+          </div>
+          {signals.map((s) => (
+            <div className="signal" key={s.label}>
+              <div className="signal-head">
+                <span>{s.label}</span>
+                <span className="muted">{s.fmt(s.value)}</span>
+              </div>
+              <div className="signal-bar"><div className="signal-fill" style={{ width: `${Math.round((s.value || 0) * 100)}%` }} /></div>
+            </div>
+          ))}
+          {rec.reason && <p className="reason-cell" style={{ marginTop: 14 }}>{rec.reason}</p>}
+        </div>
+
+        <div className="card">
+          <h3>Plan for this product</h3>
+          {inv ? (
+            <table>
+              <tbody>
+                <tr>
+                  <td className="muted">Status</td>
+                  <td><span className={`badge ${STATUS_META[inv.status]?.tone}`}>{STATUS_META[inv.status]?.emoji} {STATUS_META[inv.status]?.label}</span></td>
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                <tr><td className="muted">Current stock</td><td><b>{fmt(inv.current_stock, 0)}</b></td></tr>
+                <tr><td className="muted"><span className="tip" title={TERM_TIPS['Expected demand']}>Expected demand (lead time) ⓘ</span></td><td><b>{fmt(inv.expected_demand_lead_time, 0)}</b></td></tr>
+                <tr><td className="muted"><span className="tip" title={TERM_TIPS['Safety stock']}>Safety stock ⓘ</span></td><td>{fmt(inv.safety_stock, 0)}</td></tr>
+                <tr><td className="muted"><span className="tip" title={TERM_TIPS['Reorder point']}>Reorder point ⓘ</span></td><td>{fmt(inv.reorder_point, 0)}</td></tr>
+                <tr><td className="muted"><span className="tip" title={TERM_TIPS.EOQ}>Suggested order size (EOQ) ⓘ</span></td><td>{fmt(inv.eoq, 0)}</td></tr>
+                <tr>
+                  <td className="muted">Action</td>
+                  <td>{inv.recommended_order
+                    ? <span className="action">{STATUS_META[inv.status]?.emoji} Order {fmt(inv.recommended_order, 0)} units</span>
+                    : <span className="muted">— no order needed</span>}</td>
+                </tr>
+                <tr><td className="muted">Stockout risk</td><td><span className={`badge ${inv.stockout_risk === 'high' ? 'red' : inv.stockout_risk === 'medium' ? 'amber' : 'green'}`}>{RISK_LABELS[inv.stockout_risk]}</span></td></tr>
+              </tbody>
+            </table>
+          ) : <p className="muted">No plan available.</p>}
+          {inv?.reason && <p className="reason-cell" style={{ marginTop: 12 }}>{inv.reason}</p>}
+        </div>
       </div>
 
       <div className="card">
-        <div className="toolbar" style={{ marginBottom: 8 }}>
-          <div className="field">
-            <label>Model</label>
-            <select value={chosenModel} onChange={(e) => setModel(e.target.value)}>
-              {(results.models || []).map((m) => <option key={m} value={m}>{results.model_labels?.[m] || m}</option>)}
-            </select>
-          </div>
-        </div>
-        <h3>Actual vs Predicted — {active}</h3>
-        <ResponsiveContainer width="100%" height={320}>
-          <LineChart data={series} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <h3>Demand history + forecast</h3>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="date" tick={{ fontSize: 10 }} minTickGap={40} />
             <YAxis tick={{ fontSize: 12 }} />
             <Tooltip formatter={(v) => fmt(v, 1)} />
             <Legend />
-            <Line type="monotone" dataKey="actual" stroke="#2563eb" dot={false} strokeWidth={2} name="Actual" />
-            <Line type="monotone" dataKey="predicted" stroke="#ef4444" dot={false} strokeWidth={1.5} name="Predicted" />
+            <Line type="monotone" dataKey="actual" stroke="#2563eb" dot={false} strokeWidth={2} name="Past demand" />
+            <Line type="monotone" dataKey="forecast" stroke="#10b981" dot={false} strokeWidth={2} name="Forecast" />
           </LineChart>
         </ResponsiveContainer>
       </div>

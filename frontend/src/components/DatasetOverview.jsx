@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
-import { uploadFile, loadDemo, fmt } from '../api.js'
+import { uploadFile, loadDemo } from '../api.js'
 
-export default function DatasetOverview({ dataset, onLoaded, onProceed }) {
+export default function DatasetOverview({ onLoaded }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [drag, setDrag] = useState(false)
@@ -12,8 +12,7 @@ export default function DatasetOverview({ dataset, onLoaded, onProceed }) {
     setBusy(true)
     setError(null)
     try {
-      const data = await uploadFile(file)
-      onLoaded(data)
+      onLoaded(await uploadFile(file))
     } catch (e) {
       setError(e.message)
     } finally {
@@ -25,8 +24,7 @@ export default function DatasetOverview({ dataset, onLoaded, onProceed }) {
     setBusy(true)
     setError(null)
     try {
-      const data = await loadDemo()
-      onLoaded(data)
+      onLoaded(await loadDemo())
     } catch (e) {
       setError(e.message)
     } finally {
@@ -34,91 +32,12 @@ export default function DatasetOverview({ dataset, onLoaded, onProceed }) {
     }
   }
 
-  if (dataset) {
-    const r = dataset.report
-    return (
-      <div>
-        <div className="page-head">
-          <div>
-            <h2>Dataset Overview</h2>
-            <p className="muted">Validated and ready for forecasting.</p>
-          </div>
-          <button className="btn primary" onClick={onProceed}>Proceed to Forecast →</button>
-        </div>
-
-        <div className="kpis">
-          <KPI label="Rows" value={fmt(r.n_rows, 0)} />
-          <KPI label="Products (SKUs)" value={fmt(r.n_products, 0)} />
-          <KPI label="Categories" value={fmt(r.n_categories, 0)} />
-          <KPI label="Days" value={fmt(r.n_days, 0)} />
-          <KPI label="Date Range" value={`${r.date_min} → ${r.date_max}`} small />
-        </div>
-
-        <div className="row">
-          <div className="card">
-            <h3>Detected Columns</h3>
-            <table>
-              <thead><tr><th>Field</th><th>Source Column</th></tr></thead>
-              <tbody>
-                {r.columns.map((c) => (
-                  <tr key={c.name}>
-                    <td><b>{c.name}</b></td>
-                    <td className="muted">{r.mapped[c.name] || '(derived / default)'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="card">
-            <h3>Categories</h3>
-            {r.categories.length === 0 && <p className="muted">No category column detected.</p>}
-            <div className="chips">
-              {r.categories.map((c) => (
-                <span key={c.name} className="badge">{c.name} · {c.count}</span>
-              ))}
-            </div>
-
-            {Object.keys(r.defaulted).length > 0 && (
-              <>
-                <h3 style={{ marginTop: 18 }}>Defaults Applied</h3>
-                <ul className="note-list">
-                  {Object.entries(r.defaulted).map(([k, v]) => (
-                    <li key={k}><b>{k}</b>: {v}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="card">
-          <h3>Data Preview</h3>
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>{r.columns.map((c) => <th key={c.name}>{c.name}</th>)}</tr>
-              </thead>
-              <tbody>
-                {r.preview.map((row, i) => (
-                  <tr key={i}>
-                    {r.columns.map((c) => <td key={c.name}>{row[c] ?? ''}</td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="upload-wrap">
       <div className="page-head">
         <div>
-          <h2>Dataset Overview</h2>
-          <p className="muted">Upload a supermarket sales CSV to start.</p>
+          <h2>Welcome to the Supply Chain Assistant</h2>
+          <p className="muted">Upload your sales history and we'll tell you what to order.</p>
         </div>
       </div>
 
@@ -153,21 +72,15 @@ export default function DatasetOverview({ dataset, onLoaded, onProceed }) {
 
       <div className="req-hint">
         <h3>Expected columns</h3>
-        <p className="muted">Required: <code>date</code>, <code>product_id</code> (or sku), <code>sales</code> (or demand/units).
-        Optional: <code>price</code>, <code>is_promo</code>, <code>discount_pct</code>, <code>is_holiday</code>, <code>category</code>, <code>base_price</code>, <code>product_name</code>.
-        Missing optional columns are defaulted automatically.</p>
+        <p className="muted">
+          Required: <code>date</code>, <code>product_id</code> (or sku), <code>sales</code> (or demand/units).
+          <br />
+          Optional: <code>price</code>, <code>is_promo</code>, <code>category</code>, <code>product_name</code>,
+          and — for reorder recommendations — <code>on_hand</code> (current stock) and <code>lead_time_days</code>.
+        </p>
       </div>
 
       {error && <div className="error banner">{error}</div>}
-    </div>
-  )
-}
-
-function KPI({ label, value, small }) {
-  return (
-    <div className="card kpi">
-      <div className="label">{label}</div>
-      <div className="value" style={small ? { fontSize: 16 } : undefined}>{value}</div>
     </div>
   )
 }
